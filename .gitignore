@@ -1,0 +1,41 @@
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+
+# Chrome Extension
+chrome-extension/dist/
+chrome-extension/node_modules/
+
+# Backend
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# Crawler
+crawler/__pycache__/
+crawler/*.pyc
+crawler/.pytest_cache/
+crawler/logs/
+crawler/data/*.json
+crawler/.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+
+# Temp files
+*.tmp
+*.temp

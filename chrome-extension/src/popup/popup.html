@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeChat AI-Editor 设置</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 450px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .hint a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .hint a:hover {
+      text-decoration: underline;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #666;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .info-box {
+      background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border-left: 4px solid #667eea;
+    }
+
+    .info-box h3 {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .info-box p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+      margin: 4px 0;
+    }
+
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 WeChat AI-Editor</h1>
+    <div class="subtitle">公众号 AI 创作小助手 (集成豆包)</div>
+
+    <div class="info-box">
+      <h3>💡 使用说明</h3>
+      <p><strong>1.</strong> 打开微信公众号编辑页面</p>
+      <p><strong>2.</strong> 点击右下角的🤖悬浮按钮</p>
+      <p><strong>3.</strong> 选择功能卡片或直接输入需求</p>
+      <p><strong>4.</strong> 在弹出的豆包对话框中粘贴并获取结果</p>
+      <p><strong>5.</strong> 点击"粘贴到编辑器"完成创作</p>
+    </div>
+
+    <div class="info-box" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-left-color: #ff9800;">
+      <h3>✨ 特色功能</h3>
+      <p>📝 帮我写文章 - 输入参考链接，AI帮你创作</p>
+      <p>💡 写标题 - 一键生成10个爆款标题</p>
+      <p>🔍 分析文章 - 学习别人的爆款套路</p>
+      <p>✨ 扩写段落 - 让内容更丰富详细</p>
+      <p>🎯 提炼金句 - 提取可传播的精彩句子</p>
+      <p>📋 改写润色 - 让文字更专业</p>
+    </div>
+
+    <div class="footer">
+      v3.0 | 豆包集成版 |
+      <a href="https://github.com/your-repo" target="_blank" style="color: #667eea;">GitHub</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

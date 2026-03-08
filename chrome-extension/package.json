@@ -1,0 +1,10 @@
+{
+  "name": "wechat-ai-editor-extension",
+  "version": "1.0.0",
+  "description": "WeChat AI-Editor Chrome Extension",
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch"
+  },
+  "devDependencies": {}
+}

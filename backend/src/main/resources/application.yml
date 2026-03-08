@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: wechat-ai-editor
+
+  # 数据源配置
+  datasource:
+    url: jdbc:h2:mem:aieditor
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # H2 控制台
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# 豆包 API 配置
+doubao:
+  api-key: ${DOUBAO_API_KEY:your-api-key-here}
+  endpoint: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+  model: doubao-pro-32k
+  temperature: 0.7
+  max-tokens: 4096
+  timeout: 60
+
+# 日志配置
+logging:
+  level:
+    com.wechat.aieditor: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# 爬虫配置
+crawler:
+  enabled: true
+  interval: 3600  # 抓取间隔（秒）
+  user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36

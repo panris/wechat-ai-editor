@@ -1,0 +1,24 @@
+{
+  "target_accounts": [
+    {
+      "name": "示例公众号1",
+      "biz": "",
+      "description": "请填入实际的公众号信息"
+    },
+    {
+      "name": "示例公众号2",
+      "biz": "",
+      "description": "可通过文章链接中的 __biz 参数获取"
+    }
+  ],
+  "max_articles_per_account": 10,
+  "headless": true,
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "crawl_interval": 3600,
+  "enable_proxy": false,
+  "proxy": {
+    "server": "",
+    "username": "",
+    "password": ""
+  }
+}

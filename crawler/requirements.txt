@@ -1,0 +1,24 @@
+# WeChat AI-Editor Crawler Requirements
+
+# Web Scraping
+playwright==1.40.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+requests==2.31.0
+
+# Data Processing
+pandas==2.1.4
+
+# Database
+pymongo==4.6.1
+
+# Utilities
+python-dotenv==1.0.0
+loguru==0.7.2
+
+# Async
+aiohttp==3.9.1
+asyncio==3.4.3
+
+# WeChat Article Fetching (optional third-party API)
+# sogou-weixin-sdk==1.0.0
