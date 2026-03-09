@@ -612,30 +612,34 @@ async function loadHotspots(source) {
 
 // 获取热点数据
 async function fetchHotspots(source) {
-  // 使用免费的热点API
-  const apiUrls = {
-    weibo: 'https://api.vvhan.com/api/hotlist/wbHot',
-    zhihu: 'https://api.vvhan.com/api/hotlist/zhihuHot',
-    baidu: 'https://api.vvhan.com/api/hotlist/baiduRD'
-  };
+  // 通过background script获取数据，避免CORS问题
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { action: 'fetchHotspots', source: source },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
 
-  const url = apiUrls[source];
-  if (!url) {
-    throw new Error('不支持的热点源');
-  }
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('网络请求失败');
-  }
-
-  const data = await response.json();
-
-  if (data.success && data.data) {
-    return data.data.slice(0, 50); // 取前50条
-  } else {
-    throw new Error('数据格式错误');
-  }
+        if (response.success) {
+          const data = response.data;
+          // 处理不同API的数据格式
+          if (data.code === 200 && data.data) {
+            resolve(data.data.slice(0, 50));
+          } else if (data.success && data.data) {
+            resolve(data.data.slice(0, 50));
+          } else if (Array.isArray(data)) {
+            resolve(data.slice(0, 50));
+          } else {
+            reject(new Error('数据格式错误'));
+          }
+        } else {
+          reject(new Error(response.error || '获取数据失败'));
+        }
+      }
+    );
+  });
 }
 
 // 渲染热点列表
@@ -649,13 +653,15 @@ function renderHotspotList(hotspots, source) {
 
   const html = hotspots.map((item, index) => {
     const rankClass = index < 3 ? 'top-rank' : '';
-    const hotValue = item.hot || item.hotScore || item.index || '';
+    // 兼容多种数据格式
+    const hotValue = item.hot || item.hotScore || item.index || item.hotnum || '';
+    const title = item.title || item.query || item.word || item.name || '无标题';
 
     return `
       <div class="hotspot-item ${rankClass}" data-index="${index}" data-source="${source}">
         <div class="hotspot-rank">${index + 1}</div>
         <div class="hotspot-content">
-          <div class="hotspot-title">${item.title || item.word || '无标题'}</div>
+          <div class="hotspot-title">${title}</div>
           ${hotValue ? `<div class="hotspot-hot">🔥 ${formatHotValue(hotValue)}</div>` : ''}
         </div>
         <div class="hotspot-arrow">→</div>
@@ -684,12 +690,15 @@ function showHotspotDetail(hotspot, source) {
   window.currentHotspot = hotspot;
   window.currentHotspotSource = source;
 
-  // 填充详情
-  document.getElementById('detail-title').textContent = hotspot.title || hotspot.word || '无标题';
-  document.getElementById('detail-hot').textContent = `🔥 热度：${formatHotValue(hotspot.hot || hotspot.hotScore || '未知')}`;
-  document.getElementById('detail-time').textContent = `⏰ 来源：${getSourceName(source)}`;
+  // 兼容多种数据格式
+  const title = hotspot.title || hotspot.query || hotspot.word || hotspot.name || '无标题';
+  const hotValue = hotspot.hot || hotspot.hotScore || hotspot.index || hotspot.hotnum || '未知';
+  const desc = hotspot.desc || hotspot.excerpt || hotspot.mobileSummary || title || '暂无描述';
 
-  const desc = hotspot.desc || hotspot.excerpt || hotspot.title || '暂无描述';
+  // 填充详情
+  document.getElementById('detail-title').textContent = title;
+  document.getElementById('detail-hot').textContent = `🔥 热度：${formatHotValue(hotValue)}`;
+  document.getElementById('detail-time').textContent = `⏰ 来源：${getSourceName(source)}`;
   document.getElementById('detail-desc').innerHTML = `<p>${desc}</p>`;
 
   // 切换视图
@@ -714,8 +723,8 @@ function createFromHotspot() {
   // 切换到创作Tab
   switchTab('create');
 
-  // 生成Prompt
-  const title = hotspot.title || hotspot.word || '';
+  // 生成Prompt - 兼容多种数据格式
+  const title = hotspot.title || hotspot.query || hotspot.word || hotspot.name || '热点话题';
   const prompt = `请基于以下热点话题创作一篇公众号文章：
 
 热点标题：${title}
@@ -740,8 +749,8 @@ function analyzeHotspot() {
   // 切换到创作Tab
   switchTab('create');
 
-  // 生成分析Prompt
-  const title = hotspot.title || hotspot.word || '';
+  // 生成分析Prompt - 兼容多种数据格式
+  const title = hotspot.title || hotspot.query || hotspot.word || hotspot.name || '热点话题';
   const prompt = `请深度分析以下热点话题：
 
 热点标题：${title}

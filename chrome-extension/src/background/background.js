@@ -24,7 +24,37 @@ chrome.action.onClicked.addListener((tab) => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Background received message:', request);
 
-  // 可以在这里添加其他后台任务
+  // 处理热点API请求
+  if (request.action === 'fetchHotspots') {
+    const source = request.source;
+    const apiUrls = {
+      weibo: 'https://tenapi.cn/v2/weibohot',
+      zhihu: 'https://tenapi.cn/v2/zhihuhot',
+      baidu: 'https://tenapi.cn/v2/baiduhot'
+    };
+
+    const url = apiUrls[source];
+    if (!url) {
+      sendResponse({ success: false, error: '不支持的热点源' });
+      return true;
+    }
+
+    // 通过background发送请求，避免CORS问题
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        console.log('Hotspot data:', data);
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error('Fetch hotspot error:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+
+    return true; // 保持消息通道开放
+  }
+
+  // 打开豆包
   if (request.action === 'openDoubao') {
     chrome.tabs.create({ url: 'https://www.doubao.com/chat/' });
     sendResponse({ success: true });

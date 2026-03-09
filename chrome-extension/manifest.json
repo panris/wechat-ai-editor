@@ -12,7 +12,9 @@
   ],
   "host_permissions": [
     "https://mp.weixin.qq.com/*",
-    "https://www.doubao.com/*"
+    "https://www.doubao.com/*",
+    "https://api.vvhan.com/*",
+    "https://tenapi.cn/*"
   ],
   "background": {
     "service_worker": "background.js"
