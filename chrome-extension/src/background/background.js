@@ -28,9 +28,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'fetchHotspots') {
     const source = request.source;
     const apiUrls = {
-      weibo: 'https://tenapi.cn/v2/weibohot',
-      zhihu: 'https://tenapi.cn/v2/zhihuhot',
-      baidu: 'https://tenapi.cn/v2/baiduhot'
+      weibo: 'https://api.qqsuu.cn/api/dm-weibohot',
+      zhihu: 'https://api.qqsuu.cn/api/dm-zhihuhot',
+      baidu: 'https://api.qqsuu.cn/api/dm-baiduhot'
     };
 
     const url = apiUrls[source];

@@ -624,14 +624,29 @@ async function fetchHotspots(source) {
 
         if (response.success) {
           const data = response.data;
-          // 处理不同API的数据格式
-          if (data.code === 200 && data.data) {
+
+          // 处理qqsuu API的数据格式
+          if (data.code === 200 && data.data && data.data.list) {
+            // qqsuu API格式
+            const hotspots = data.data.list.slice(0, 50).map(item => ({
+              title: item.hotword || item.title || '无标题',
+              hot: item.hotwordnum || item.hot || '',
+              tag: item.hottag || '',
+              desc: item.hotword || item.title || '暂无描述'
+            }));
+            resolve(hotspots);
+          }
+          // 兼容其他可能的数据格式
+          else if (data.code === 200 && data.data && Array.isArray(data.data)) {
             resolve(data.data.slice(0, 50));
-          } else if (data.success && data.data) {
+          }
+          else if (data.success && data.data) {
             resolve(data.data.slice(0, 50));
-          } else if (Array.isArray(data)) {
+          }
+          else if (Array.isArray(data)) {
             resolve(data.slice(0, 50));
-          } else {
+          }
+          else {
             reject(new Error('数据格式错误'));
           }
         } else {

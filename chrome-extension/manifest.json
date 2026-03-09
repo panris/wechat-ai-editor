@@ -14,7 +14,8 @@
     "https://mp.weixin.qq.com/*",
     "https://www.doubao.com/*",
     "https://api.vvhan.com/*",
-    "https://tenapi.cn/*"
+    "https://tenapi.cn/*",
+    "https://api.qqsuu.cn/*"
   ],
   "background": {
     "service_worker": "background.js"
