@@ -134,8 +134,8 @@ function createAISidebar() {
           <h4>🔥 今日热点</h4>
           <div class="hotspot-sources">
             <button class="source-btn active" data-source="weibo">微博</button>
-            <button class="source-btn" data-source="zhihu">知乎</button>
-            <button class="source-btn" data-source="baidu">百度</button>
+            <button class="source-btn disabled" data-source="zhihu" title="暂不可用">知乎 ⚠️</button>
+            <button class="source-btn disabled" data-source="baidu" title="暂不可用">百度 ⚠️</button>
           </div>
         </div>
 
@@ -566,10 +566,17 @@ function switchTab(tabName) {
 
 // 切换热点源
 function switchHotspotSource(source) {
+  // 检查是否为禁用的源
+  const clickedBtn = document.querySelector(`.source-btn[data-source="${source}"]`);
+  if (clickedBtn && clickedBtn.classList.contains('disabled')) {
+    showNotification('⚠️ 该热点源暂时不可用，请使用微博热搜', 'warning');
+    return;
+  }
+
   // 切换源按钮状态
   document.querySelectorAll('.source-btn').forEach(btn => {
     btn.classList.remove('active');
-    if (btn.dataset.source === source) {
+    if (btn.dataset.source === source && !btn.classList.contains('disabled')) {
       btn.classList.add('active');
     }
   });

@@ -27,15 +27,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // 处理热点API请求
   if (request.action === 'fetchHotspots') {
     const source = request.source;
+
+    // 目前只有微博接口可用
     const apiUrls = {
       weibo: 'https://api.qqsuu.cn/api/dm-weibohot',
-      zhihu: 'https://api.qqsuu.cn/api/dm-zhihuhot',
-      baidu: 'https://api.qqsuu.cn/api/dm-baiduhot'
+      // 知乎和百度接口暂不可用
+      zhihu: null,
+      baidu: null
     };
 
     const url = apiUrls[source];
+
+    // 检查接口是否可用
     if (!url) {
-      sendResponse({ success: false, error: '不支持的热点源' });
+      sendResponse({
+        success: false,
+        error: `${getSourceName(source)}热榜暂时不可用，请使用微博热搜`
+      });
       return true;
     }
 
@@ -52,6 +60,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
 
     return true; // 保持消息通道开放
+  }
+
+  // 辅助函数：获取源名称
+  function getSourceName(source) {
+    const names = {
+      weibo: '微博',
+      zhihu: '知乎',
+      baidu: '百度'
+    };
+    return names[source] || source;
   }
 
   // 打开豆包
