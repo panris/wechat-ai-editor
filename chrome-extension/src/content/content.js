@@ -24,7 +24,15 @@ function createAISidebar() {
       <button id="ai-sidebar-close" class="close-btn">×</button>
     </div>
 
+    <!-- 顶部Tab切换 -->
+    <div class="tab-navigation">
+      <button class="tab-btn active" data-tab="create">🎨 创作</button>
+      <button class="tab-btn" data-tab="hotspot">🔥 热点</button>
+    </div>
+
     <div class="ai-sidebar-content">
+      <!-- 创作Tab内容 -->
+      <div id="create-tab" class="tab-content active">
       <!-- 智能对话区 -->
       <div class="chat-section">
         <div class="greeting">
@@ -117,6 +125,51 @@ function createAISidebar() {
           <button id="open-doubao" class="primary-btn">🚀 打开豆包对话</button>
         </div>
       </div>
+      </div>
+      <!-- 创作Tab结束 -->
+
+      <!-- 热点Tab内容 -->
+      <div id="hotspot-tab" class="tab-content">
+        <div class="hotspot-header">
+          <h4>🔥 今日热点</h4>
+          <div class="hotspot-sources">
+            <button class="source-btn active" data-source="weibo">微博</button>
+            <button class="source-btn" data-source="zhihu">知乎</button>
+            <button class="source-btn" data-source="baidu">百度</button>
+          </div>
+        </div>
+
+        <div class="hotspot-time">
+          <span id="hotspot-update-time">更新时间：加载中...</span>
+          <button id="refresh-hotspot" class="refresh-btn">🔄 刷新</button>
+        </div>
+
+        <div id="hotspot-list" class="hotspot-list">
+          <div class="loading-placeholder">
+            <div class="loading-spinner"></div>
+            <p>正在加载热点...</p>
+          </div>
+        </div>
+
+        <div id="hotspot-detail" class="hotspot-detail" style="display:none;">
+          <div class="detail-header">
+            <button id="back-to-list" class="back-btn">← 返回列表</button>
+            <h4 id="detail-title"></h4>
+          </div>
+          <div class="detail-content">
+            <div class="detail-meta">
+              <span id="detail-hot">🔥 热度：加载中...</span>
+              <span id="detail-time">⏰ 时间：加载中...</span>
+            </div>
+            <div id="detail-desc" class="detail-desc"></div>
+            <div class="detail-actions">
+              <button id="create-from-hotspot" class="primary-btn">✨ 基于此热点创作</button>
+              <button id="analyze-hotspot" class="secondary-btn">🔍 分析热点</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 热点Tab结束 -->
     </div>
   `;
 
@@ -129,6 +182,14 @@ function bindEvents() {
   // 关闭按钮
   document.getElementById('ai-sidebar-close')?.addEventListener('click', () => {
     document.getElementById('ai-editor-sidebar').style.display = 'none';
+  });
+
+  // Tab切换
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const tabName = e.target.dataset.tab;
+      switchTab(tabName);
+    });
   });
 
   // 发送消息
@@ -157,6 +218,18 @@ function bindEvents() {
     showNotification('💡 请在豆包中复制结果，然后点击"粘贴到编辑器"', 'info');
   });
   document.getElementById('paste-to-editor')?.addEventListener('click', pasteToEditor);
+
+  // 热点Tab相关按钮
+  document.querySelectorAll('.source-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const source = e.target.dataset.source;
+      switchHotspotSource(source);
+    });
+  });
+  document.getElementById('refresh-hotspot')?.addEventListener('click', refreshHotspot);
+  document.getElementById('back-to-list')?.addEventListener('click', backToHotspotList);
+  document.getElementById('create-from-hotspot')?.addEventListener('click', createFromHotspot);
+  document.getElementById('analyze-hotspot')?.addEventListener('click', analyzeHotspot);
 }
 
 // 处理用户输入
@@ -461,6 +534,261 @@ function showNotification(message, type = 'info') {
     setTimeout(() => notification.remove(), 300);
   }, 3000);
 }
+
+// ========== 热点功能相关函数 ==========
+
+// Tab切换
+function switchTab(tabName) {
+  // 切换Tab按钮状态
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.tab === tabName) {
+      btn.classList.add('active');
+    }
+  });
+
+  // 切换Tab内容
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.remove('active');
+  });
+
+  if (tabName === 'create') {
+    document.getElementById('create-tab').classList.add('active');
+  } else if (tabName === 'hotspot') {
+    document.getElementById('hotspot-tab').classList.add('active');
+    // 首次加载热点
+    if (!window.hotspotsLoaded) {
+      loadHotspots('weibo');
+      window.hotspotsLoaded = true;
+    }
+  }
+}
+
+// 切换热点源
+function switchHotspotSource(source) {
+  // 切换源按钮状态
+  document.querySelectorAll('.source-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.source === source) {
+      btn.classList.add('active');
+    }
+  });
+
+  // 加载对应源的热点
+  loadHotspots(source);
+}
+
+// 加载热点数据
+async function loadHotspots(source) {
+  const hotspotList = document.getElementById('hotspot-list');
+  const updateTime = document.getElementById('hotspot-update-time');
+
+  // 显示加载状态
+  hotspotList.innerHTML = `
+    <div class="loading-placeholder">
+      <div class="loading-spinner"></div>
+      <p>正在加载${getSourceName(source)}热点...</p>
+    </div>
+  `;
+
+  try {
+    const hotspots = await fetchHotspots(source);
+
+    // 更新时间
+    const now = new Date();
+    updateTime.textContent = `更新时间：${now.toLocaleTimeString('zh-CN')}`;
+
+    // 渲染热点列表
+    renderHotspotList(hotspots, source);
+  } catch (error) {
+    hotspotList.innerHTML = `
+      <div class="error-placeholder">
+        <p>❌ 加载失败：${error.message}</p>
+        <button class="retry-btn" onclick="loadHotspots('${source}')">重试</button>
+      </div>
+    `;
+  }
+}
+
+// 获取热点数据
+async function fetchHotspots(source) {
+  // 使用免费的热点API
+  const apiUrls = {
+    weibo: 'https://api.vvhan.com/api/hotlist/wbHot',
+    zhihu: 'https://api.vvhan.com/api/hotlist/zhihuHot',
+    baidu: 'https://api.vvhan.com/api/hotlist/baiduRD'
+  };
+
+  const url = apiUrls[source];
+  if (!url) {
+    throw new Error('不支持的热点源');
+  }
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('网络请求失败');
+  }
+
+  const data = await response.json();
+
+  if (data.success && data.data) {
+    return data.data.slice(0, 50); // 取前50条
+  } else {
+    throw new Error('数据格式错误');
+  }
+}
+
+// 渲染热点列表
+function renderHotspotList(hotspots, source) {
+  const hotspotList = document.getElementById('hotspot-list');
+
+  if (!hotspots || hotspots.length === 0) {
+    hotspotList.innerHTML = '<div class="empty-placeholder"><p>暂无热点数据</p></div>';
+    return;
+  }
+
+  const html = hotspots.map((item, index) => {
+    const rankClass = index < 3 ? 'top-rank' : '';
+    const hotValue = item.hot || item.hotScore || item.index || '';
+
+    return `
+      <div class="hotspot-item ${rankClass}" data-index="${index}" data-source="${source}">
+        <div class="hotspot-rank">${index + 1}</div>
+        <div class="hotspot-content">
+          <div class="hotspot-title">${item.title || item.word || '无标题'}</div>
+          ${hotValue ? `<div class="hotspot-hot">🔥 ${formatHotValue(hotValue)}</div>` : ''}
+        </div>
+        <div class="hotspot-arrow">→</div>
+      </div>
+    `;
+  }).join('');
+
+  hotspotList.innerHTML = html;
+
+  // 绑定点击事件
+  document.querySelectorAll('.hotspot-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const index = parseInt(item.dataset.index);
+      const source = item.dataset.source;
+      showHotspotDetail(hotspots[index], source);
+    });
+  });
+}
+
+// 显示热点详情
+function showHotspotDetail(hotspot, source) {
+  const listView = document.getElementById('hotspot-list');
+  const detailView = document.getElementById('hotspot-detail');
+
+  // 保存当前热点到全局变量
+  window.currentHotspot = hotspot;
+  window.currentHotspotSource = source;
+
+  // 填充详情
+  document.getElementById('detail-title').textContent = hotspot.title || hotspot.word || '无标题';
+  document.getElementById('detail-hot').textContent = `🔥 热度：${formatHotValue(hotspot.hot || hotspot.hotScore || '未知')}`;
+  document.getElementById('detail-time').textContent = `⏰ 来源：${getSourceName(source)}`;
+
+  const desc = hotspot.desc || hotspot.excerpt || hotspot.title || '暂无描述';
+  document.getElementById('detail-desc').innerHTML = `<p>${desc}</p>`;
+
+  // 切换视图
+  listView.style.display = 'none';
+  detailView.style.display = 'block';
+}
+
+// 返回热点列表
+function backToHotspotList() {
+  const listView = document.getElementById('hotspot-list');
+  const detailView = document.getElementById('hotspot-detail');
+
+  listView.style.display = 'block';
+  detailView.style.display = 'none';
+}
+
+// 基于热点创作
+function createFromHotspot() {
+  const hotspot = window.currentHotspot;
+  if (!hotspot) return;
+
+  // 切换到创作Tab
+  switchTab('create');
+
+  // 生成Prompt
+  const title = hotspot.title || hotspot.word || '';
+  const prompt = `请基于以下热点话题创作一篇公众号文章：
+
+热点标题：${title}
+
+要求：
+1. 紧扣热点，找准切入角度
+2. 标题要有吸引力，15-25字
+3. 内容1500-2000字
+4. 结构清晰，有观点有案例
+5. 语言生动，易于传播`;
+
+  // 显示Prompt
+  showPrompt(prompt);
+  showNotification('✅ 已生成创作Prompt，请使用豆包创作', 'success');
+}
+
+// 分析热点
+function analyzeHotspot() {
+  const hotspot = window.currentHotspot;
+  if (!hotspot) return;
+
+  // 切换到创作Tab
+  switchTab('create');
+
+  // 生成分析Prompt
+  const title = hotspot.title || hotspot.word || '';
+  const prompt = `请深度分析以下热点话题：
+
+热点标题：${title}
+
+分析维度：
+1. 热点背景和起因
+2. 核心讨论点和争议
+3. 受众情绪和立场
+4. 传播特点和趋势
+5. 适合的创作角度
+6. 风险提示和注意事项`;
+
+  // 显示Prompt
+  showPrompt(prompt);
+  showNotification('✅ 已生成分析Prompt，请使用豆包分析', 'success');
+}
+
+// 刷新热点
+function refreshHotspot() {
+  const activeSource = document.querySelector('.source-btn.active').dataset.source;
+  loadHotspots(activeSource);
+  showNotification('🔄 正在刷新热点...', 'info');
+}
+
+// 辅助函数：获取源名称
+function getSourceName(source) {
+  const names = {
+    weibo: '微博',
+    zhihu: '知乎',
+    baidu: '百度'
+  };
+  return names[source] || source;
+}
+
+// 辅助函数：格式化热度值
+function formatHotValue(value) {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') {
+    if (value > 10000) {
+      return (value / 10000).toFixed(1) + '万';
+    }
+    return value.toString();
+  }
+  return '未知';
+}
+
+// ========== 热点功能结束 ==========
 
 // 创建悬浮按钮
 function createFloatingButton() {
