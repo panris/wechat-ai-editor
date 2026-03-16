@@ -28,35 +28,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'fetchHotspots') {
     const source = request.source;
 
-    // 目前只有微博接口可用
-    const apiUrls = {
-      weibo: 'https://api.qqsuu.cn/api/dm-weibohot',
-      // 知乎和百度接口暂不可用
-      zhihu: null,
-      baidu: null
-    };
+    // 优先使用本地后端API
+    const backendUrl = 'http://localhost:8080/api/ai/hotspots';
 
-    const url = apiUrls[source];
+    console.log('正在从后端获取热点数据...');
 
-    // 检查接口是否可用
-    if (!url) {
-      sendResponse({
-        success: false,
-        error: `${getSourceName(source)}热榜暂时不可用，请使用微博热搜`
-      });
-      return true;
-    }
-
-    // 通过background发送请求，避免CORS问题
-    fetch(url)
+    // 先尝试后端API
+    fetch(`${backendUrl}?source=${source}`)
       .then(response => response.json())
       .then(data => {
-        console.log('Hotspot data:', data);
-        sendResponse({ success: true, data: data });
+        console.log('后端热点数据:', data);
+
+        if (data.code === 200 && data.data) {
+          sendResponse({ success: true, data: { code: 200, data: data.data } });
+        } else {
+          // 后端也失败了，返回友好提示
+          sendResponse({
+            success: false,
+            error: '热点服务暂时不可用，请稍后重试'
+          });
+        }
       })
       .catch(error => {
-        console.error('Fetch hotspot error:', error);
-        sendResponse({ success: false, error: error.message });
+        console.error('后端热点API失败:', error);
+        // 后端不可用时的提示
+        sendResponse({
+          success: false,
+          error: '热点服务未启动或不可用。所有免费第三方热点API均已失效，建议使用后端热点服务。'
+        });
       });
 
     return true; // 保持消息通道开放

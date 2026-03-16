@@ -1,6 +1,5 @@
 package com.wechat.aieditor.config;
 
-import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -9,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ConfigurationProperties(prefix = "doubao")
-@Data
 public class DoubaoConfig {
 
     /**
@@ -41,4 +39,91 @@ public class DoubaoConfig {
      * 请求超时时间（秒）
      */
     private Integer timeout = 60;
+
+    /**
+     * 图像生成 API 端点
+     */
+    private String imageEndpoint = "https://ark.cn-beijing.volces.com/api/v3/images/generations";
+
+    /**
+     * 图像生成模型名称
+     */
+    private String imageModel = "doubao-image-pro";
+
+    /**
+     * 图像生成超时时间（秒）
+     */
+    private Integer imageTimeout = 120;
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(String endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(Double temperature) {
+        this.temperature = temperature;
+    }
+
+    public Integer getMaxTokens() {
+        return maxTokens;
+    }
+
+    public void setMaxTokens(Integer maxTokens) {
+        this.maxTokens = maxTokens;
+    }
+
+    public Integer getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(Integer timeout) {
+        this.timeout = timeout;
+    }
+
+    public String getImageEndpoint() {
+        return imageEndpoint;
+    }
+
+    public void setImageEndpoint(String imageEndpoint) {
+        this.imageEndpoint = imageEndpoint;
+    }
+
+    public String getImageModel() {
+        return imageModel;
+    }
+
+    public void setImageModel(String imageModel) {
+        this.imageModel = imageModel;
+    }
+
+    public Integer getImageTimeout() {
+        return imageTimeout;
+    }
+
+    public void setImageTimeout(Integer imageTimeout) {
+        this.imageTimeout = imageTimeout;
+    }
 }

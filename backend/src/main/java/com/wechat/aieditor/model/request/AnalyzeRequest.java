@@ -1,12 +1,10 @@
 package com.wechat.aieditor.model.request;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
 /**
  * 分析文章请求
  */
-@Data
 public class AnalyzeRequest {
 
     /**
@@ -24,4 +22,28 @@ public class AnalyzeRequest {
      * 文章来源 URL（可选）
      */
     private String url;
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
 }

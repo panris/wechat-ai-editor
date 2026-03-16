@@ -3,9 +3,9 @@ package com.wechat.aieditor.service;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.wechat.aieditor.config.DoubaoConfig;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,9 +17,9 @@ import java.util.concurrent.TimeUnit;
  * 豆包 API 服务
  */
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class DoubaoService {
+
+    private static final Logger log = LoggerFactory.getLogger(DoubaoService.class);
 
     private final DoubaoConfig doubaoConfig;
     private final OkHttpClient okHttpClient = new OkHttpClient.Builder()
@@ -27,6 +27,10 @@ public class DoubaoService {
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .build();
+
+    public DoubaoService(DoubaoConfig doubaoConfig) {
+        this.doubaoConfig = doubaoConfig;
+    }
 
     /**
      * 调用豆包 API 进行对话
@@ -143,6 +147,58 @@ public class DoubaoService {
                 """, content, instruction);
 
         return chat(prompt);
+    }
+
+    /**
+     * 分析文章并生成配图方案
+     *
+     * @param articleContent 文章内容
+     * @return JSON格式的配图方案，包含图片数量、位置和描述
+     */
+    public String analyzeArticleForImages(String articleContent) {
+        String prompt = String.format("""
+                请分析以下公众号文章，为其设计智能配图方案：
+
+                文章内容：
+                %s
+
+                请按以下要求输出JSON格式的配图方案：
+                1. 分析文章长度、结构和内容
+                2. 决定需要配几张图（1-5张，根据文章长度和段落数量）
+                3. 为每张图指定插入位置（start=文章开头封面, section-N=第N段落后, end=文章结尾）
+                4. 为每张图生成详细的英文图片描述prompt（用于AI绘图，描述要具体、视觉化）
+
+                输出格式（纯JSON，不要包含其他内容）：
+                {
+                  "totalImages": 3,
+                  "images": [
+                    {
+                      "position": "start",
+                      "type": "cover",
+                      "description": "文章主题的一句话描述",
+                      "prompt": "详细的英文绘图prompt，包含场景、风格、元素等"
+                    },
+                    {
+                      "position": "section-2",
+                      "type": "illustration",
+                      "description": "这部分内容的描述",
+                      "prompt": "详细的英文绘图prompt"
+                    }
+                  ]
+                }
+
+                提示：
+                - 封面图要吸引眼球，体现文章主题
+                - 段落配图要与内容相关，辅助理解
+                - prompt要详细具体，包含画面元素、颜色、风格、氛围等
+                - 短文章(500字以下)配1张封面图即可
+                - 中等文章(500-1500字)配2-3张图
+                - 长文章(1500字以上)配3-5张图
+
+                请直接输出JSON，不要有其他文字。
+                """, articleContent);
+
+        return chat(prompt, "你是一位专业的视觉内容策划师，擅长为文章设计配图方案和生成AI绘图prompt。");
     }
 
     /**

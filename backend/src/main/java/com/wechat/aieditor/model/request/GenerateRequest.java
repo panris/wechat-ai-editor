@@ -1,12 +1,10 @@
 package com.wechat.aieditor.model.request;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
 /**
  * 生成初稿请求
  */
-@Data
 public class GenerateRequest {
 
     /**
@@ -19,4 +17,20 @@ public class GenerateRequest {
      * 自定义要求（可选）
      */
     private String customRequirement;
+
+    public String getAnalysisResult() {
+        return analysisResult;
+    }
+
+    public void setAnalysisResult(String analysisResult) {
+        this.analysisResult = analysisResult;
+    }
+
+    public String getCustomRequirement() {
+        return customRequirement;
+    }
+
+    public void setCustomRequirement(String customRequirement) {
+        this.customRequirement = customRequirement;
+    }
 }

@@ -1,12 +1,10 @@
 package com.wechat.aieditor.model.request;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
 /**
  * 改写请求
  */
-@Data
 public class RewriteRequest {
 
     /**
@@ -20,4 +18,20 @@ public class RewriteRequest {
      */
     @NotBlank(message = "改写指令不能为空")
     private String instruction;
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getInstruction() {
+        return instruction;
+    }
+
+    public void setInstruction(String instruction) {
+        this.instruction = instruction;
+    }
 }

@@ -1,11 +1,8 @@
 package com.wechat.aieditor.model.response;
 
-import lombok.Data;
-
 /**
  * 统一 API 响应
  */
-@Data
 public class ApiResponse<T> {
 
     /**
@@ -32,25 +29,55 @@ public class ApiResponse<T> {
         this.timestamp = System.currentTimeMillis();
     }
 
+    public ApiResponse(Integer code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+        this.timestamp = System.currentTimeMillis();
+    }
+
     public static <T> ApiResponse<T> success(T data) {
-        ApiResponse<T> response = new ApiResponse<>();
-        response.setCode(200);
-        response.setMessage("Success");
-        response.setData(data);
-        return response;
+        return new ApiResponse<>(200, "Success", data);
     }
 
     public static <T> ApiResponse<T> error(String message) {
-        ApiResponse<T> response = new ApiResponse<>();
-        response.setCode(500);
-        response.setMessage(message);
-        return response;
+        return new ApiResponse<>(500, message, null);
     }
 
     public static <T> ApiResponse<T> error(Integer code, String message) {
-        ApiResponse<T> response = new ApiResponse<>();
-        response.setCode(code);
-        response.setMessage(message);
-        return response;
+        return new ApiResponse<>(code, message, null);
+    }
+
+    // Getters and Setters
+    public Integer getCode() {
+        return code;
+    }
+
+    public void setCode(Integer code) {
+        this.code = code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public void setData(T data) {
+        this.data = data;
+    }
+
+    public Long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Long timestamp) {
+        this.timestamp = timestamp;
     }
 }

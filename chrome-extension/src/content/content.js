@@ -111,6 +111,7 @@ function createAISidebar() {
         <iframe id="doubao-iframe" src="https://www.doubao.com/chat/" frameborder="0"></iframe>
         <div class="doubao-actions">
           <button id="copy-from-doubao" class="secondary-btn">📋 从豆包复制结果</button>
+          <button id="generate-images-btn" class="secondary-btn">🎨 自动配图</button>
           <button id="paste-to-editor" class="primary-btn">➜ 粘贴到编辑器</button>
         </div>
       </div>
@@ -181,7 +182,7 @@ function createAISidebar() {
 function bindEvents() {
   // 关闭按钮
   document.getElementById('ai-sidebar-close')?.addEventListener('click', () => {
-    document.getElementById('ai-editor-sidebar').style.display = 'none';
+    closeSidebar();
   });
 
   // Tab切换
@@ -217,6 +218,7 @@ function bindEvents() {
   document.getElementById('copy-from-doubao')?.addEventListener('click', () => {
     showNotification('💡 请在豆包中复制结果，然后点击"粘贴到编辑器"', 'info');
   });
+  document.getElementById('generate-images-btn')?.addEventListener('click', generateImagesForClipboard);
   document.getElementById('paste-to-editor')?.addEventListener('click', pasteToEditor);
 
   // 热点Tab相关按钮
@@ -477,10 +479,87 @@ function pasteToEditor() {
       return;
     }
 
-    insertToEditor(text);
+    // 检查是否是文章内容（长度超过500字）
+    if (text.length > 500) {
+      // 询问是否自动生成配图
+      if (confirm('检测到文章内容，是否自动生成配图？\n\n点击"确定"将自动为文章配图\n点击"取消"将直接插入文章')) {
+        insertToEditorWithImages(text);
+      } else {
+        insertToEditor(text);
+      }
+    } else {
+      insertToEditor(text);
+    }
   }).catch(() => {
     showNotification('❌ 读取剪贴板失败，请确保已授予权限', 'error');
   });
+}
+
+// 带配图的插入到编辑器
+async function insertToEditorWithImages(content) {
+  try {
+    showNotification('🎨 正在分析文章并生成配图...', 'info');
+
+    // 调用后端API生成配图
+    const response = await fetch('http://localhost:8080/api/ai/generate-images', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        articleContent: content,
+        autoInsert: true
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('配图生成失败');
+    }
+
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      throw new Error(result.message || '配图生成失败');
+    }
+
+    const imagePlan = result.data;
+    showNotification(`✅ 已生成 ${imagePlan.totalImages} 张配图`, 'success');
+
+    // 插入带配图的文章
+    if (imagePlan.articleWithImages) {
+      insertToEditor(imagePlan.articleWithImages);
+    } else {
+      insertToEditor(content);
+    }
+
+  } catch (error) {
+    console.error('生成配图失败:', error);
+    showNotification('⚠️ 配图生成失败，将插入原文: ' + error.message, 'warning');
+    insertToEditor(content);
+  }
+}
+
+// 为剪贴板内容生成配图
+async function generateImagesForClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+
+    if (!text) {
+      showNotification('❌ 剪贴板为空，请先从豆包复制内容', 'warning');
+      return;
+    }
+
+    if (text.length < 100) {
+      showNotification('❌ 内容太短，无法生成配图（至少100字）', 'warning');
+      return;
+    }
+
+    await insertToEditorWithImages(text);
+
+  } catch (error) {
+    console.error('读取剪贴板失败:', error);
+    showNotification('❌ 读取剪贴板失败，请确保已授予权限', 'error');
+  }
 }
 
 // 插入内容到微信编辑器
@@ -632,30 +711,66 @@ async function fetchHotspots(source) {
         if (response.success) {
           const data = response.data;
 
-          // 处理qqsuu API的数据格式
-          if (data.code === 200 && data.data && data.data.list) {
-            // qqsuu API格式
-            const hotspots = data.data.list.slice(0, 50).map(item => ({
-              title: item.hotword || item.title || '无标题',
-              hot: item.hotwordnum || item.hot || '',
-              tag: item.hottag || '',
+          // 检查API错误响应
+          if (data.code === 150) {
+            reject(new Error('API配额已用尽，正在尝试备用接口...'));
+            return;
+          }
+          if (data.code === 400 || (data.code && data.code !== 200 && data.code !== 1 && !data.data)) {
+            reject(new Error(data.msg || 'API返回错误'));
+            return;
+          }
+
+          // 处理各种API数据格式
+          let hotspots = [];
+
+          // 格式1: tenapi.cn 格式 {code:200, data:[...]}
+          if ((data.code === 200 || data.code === 1) && Array.isArray(data.data)) {
+            hotspots = data.data.slice(0, 50).map(item => ({
+              title: item.name || item.title || item.hotword || '无标题',
+              hot: item.hot || item.hotwordnum || item.hotScore || '',
+              tag: item.tag || item.hottag || '',
+              desc: item.desc || item.name || item.title || '暂无描述'
+            }));
+          }
+          // 格式2: qqsuu API格式 {code:200, data:{list:[...]}}
+          else if ((data.code === 200 || data.code === 1) && data.data && data.data.list) {
+            hotspots = data.data.list.slice(0, 50).map(item => ({
+              title: item.hotword || item.title || item.name || '无标题',
+              hot: item.hotwordnum || item.hot || item.hotScore || '',
+              tag: item.hottag || item.tag || '',
               desc: item.hotword || item.title || '暂无描述'
             }));
-            resolve(hotspots);
           }
-          // 兼容其他可能的数据格式
-          else if (data.code === 200 && data.data && Array.isArray(data.data)) {
-            resolve(data.data.slice(0, 50));
+          // 格式3: vvhan API格式 {success:true, data:[...]}
+          else if (data.success && Array.isArray(data.data)) {
+            hotspots = data.data.slice(0, 50).map(item => ({
+              title: item.title || item.name || item.hotword || '无标题',
+              hot: item.hot || item.hotwordnum || '',
+              tag: item.tag || '',
+              desc: item.title || item.name || '暂无描述'
+            }));
           }
-          else if (data.success && data.data) {
-            resolve(data.data.slice(0, 50));
-          }
+          // 格式4: 直接是数组
           else if (Array.isArray(data)) {
-            resolve(data.slice(0, 50));
+            hotspots = data.slice(0, 50).map(item => ({
+              title: item.title || item.name || item.hotword || '无标题',
+              hot: item.hot || item.hotwordnum || '',
+              tag: item.tag || item.hottag || '',
+              desc: item.desc || item.title || '暂无描述'
+            }));
           }
           else {
-            reject(new Error('数据格式错误'));
+            reject(new Error('数据格式不支持'));
+            return;
           }
+
+          if (hotspots.length === 0) {
+            reject(new Error('未获取到热点数据'));
+            return;
+          }
+
+          resolve(hotspots);
         } else {
           reject(new Error(response.error || '获取数据失败'));
         }
@@ -821,8 +936,454 @@ function formatHotValue(value) {
 
 // ========== 热点功能结束 ==========
 
+// ========== 配图功能开始 ==========
+
+// 全局变量存储当前配图方案
+let currentImagePlan = null;
+let selectedClient = 'doubao'; // 默认选择豆包
+
+// 为剪贴板内容生成配图（客户端模式）
+async function generateImagesForClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+
+    if (!text) {
+      showNotification('❌ 剪贴板为空，请先从豆包复制内容', 'warning');
+      return;
+    }
+
+    if (text.length < 100) {
+      showNotification('❌ 内容太短，无法生成配图（至少100字）', 'warning');
+      return;
+    }
+
+    await generateImagesClient(text);
+
+  } catch (error) {
+    console.error('读取剪贴板失败:', error);
+    showNotification('❌ 读取剪贴板失败，请确保已授予权限', 'error');
+  }
+}
+
+// 客户端模式生成配图
+async function generateImagesClient(articleContent) {
+  try {
+    showNotification('🎨 正在分析文章并生成配图方案...', 'info');
+
+    // 调用后端API生成配图方案（只生成prompt，不生成图片）
+    const response = await fetch('http://localhost:8080/api/ai/generate-images', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        articleContent: articleContent,
+        autoInsert: false  // 不自动插入，显示预览
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('配图方案生成失败');
+    }
+
+    const result = await response.json();
+
+    if (result.code !== 200) {
+      throw new Error(result.message || '配图方案生成失败');
+    }
+
+    const imagePlan = result.data;
+    currentImagePlan = {
+      articleContent: articleContent,
+      ...imagePlan,
+      // 为每张图片添加客户端生成状态
+      images: imagePlan.images.map(img => ({
+        ...img,
+        imageUrl: null,  // 初始没有图片
+        status: 'pending'  // pending | generating | completed
+      }))
+    };
+
+    showNotification(`✅ 配图方案已生成，共 ${imagePlan.totalImages} 张图片`, 'success');
+
+    // 显示配图预览界面
+    showImagePreview();
+
+  } catch (error) {
+    console.error('生成配图方案失败:', error);
+    showNotification('⚠️ 配图方案生成失败: ' + error.message, 'warning');
+  }
+}
+
+// 显示配图预览界面
+function showImagePreview() {
+  // 创建预览模态框
+  let modal = document.getElementById('image-preview-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'image-preview-modal';
+    modal.className = 'image-preview-modal';
+    modal.innerHTML = `
+      <div class="preview-container">
+        <div class="preview-header">
+          <h3>🎨 配图预览与调整</h3>
+          <button class="preview-close">×</button>
+        </div>
+        <div class="preview-content">
+          <!-- 客户端选择器 -->
+          <div class="client-selector">
+            <label>选择AI绘图客户端：</label>
+            <div class="client-options">
+              <div class="client-option selected" data-client="doubao">
+                <div class="icon">🎨</div>
+                <div class="name">豆包AI</div>
+              </div>
+              <div class="client-option" data-client="wenxin">
+                <div class="icon">🎭</div>
+                <div class="name">文心一言</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 提示信息 -->
+          <div class="preview-info">
+            <p>💡 提示：下方是AI为你生成的配图方案，你可以调整位置、重新生成或删除图片</p>
+          </div>
+
+          <!-- 配图卡片网格 -->
+          <div id="preview-images-grid" class="preview-images-grid">
+            <!-- 动态生成 -->
+          </div>
+
+          <!-- 生成指引 -->
+          <div class="generation-guide">
+            <h4>📋 图片生成指引</h4>
+            <ol>
+              <li>点击图片卡片上的"生成图片"按钮，将打开AI绘图客户端</li>
+              <li>在客户端中，prompt已自动复制到剪贴板，直接粘贴即可</li>
+              <li>等待AI生成图片后，保存图片或复制图片链接</li>
+              <li>返回本页面，点击"上传图片"或"粘贴链接"</li>
+              <li>所有图片准备好后，点击"确认插入"将图片插入文章</li>
+            </ol>
+          </div>
+        </div>
+        <div class="preview-footer">
+          <button class="cancel-btn">取消</button>
+          <button class="confirm-btn">确认插入</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // 绑定事件
+    modal.querySelector('.preview-close').addEventListener('click', closeImagePreview);
+    modal.querySelector('.cancel-btn').addEventListener('click', closeImagePreview);
+    modal.querySelector('.confirm-btn').addEventListener('click', confirmInsertImages);
+
+    // 客户端选择器事件
+    modal.querySelectorAll('.client-option').forEach(option => {
+      option.addEventListener('click', (e) => {
+        modal.querySelectorAll('.client-option').forEach(o => o.classList.remove('selected'));
+        e.currentTarget.classList.add('selected');
+        selectedClient = e.currentTarget.dataset.client;
+      });
+    });
+  }
+
+  // 渲染配图卡片
+  renderImageCards();
+
+  // 显示模态框
+  modal.classList.add('active');
+}
+
+// 渲染配图卡片
+function renderImageCards() {
+  const grid = document.getElementById('preview-images-grid');
+  if (!grid || !currentImagePlan) return;
+
+  grid.innerHTML = currentImagePlan.images.map((image, index) => `
+    <div class="preview-image-card" draggable="true" data-index="${index}">
+      <span class="card-drag-handle">⋮⋮</span>
+      <div class="card-header">
+        <span class="card-position">${getPositionLabel(image.position)}</span>
+        <div class="card-actions">
+          <button class="card-action-btn regenerate" onclick="regenerateImage(${index})" title="重新生成">
+            🔄
+          </button>
+          <button class="card-action-btn delete" onclick="deleteImage(${index})" title="删除">
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      <div class="image-preview-box">
+        ${image.imageUrl
+          ? `<img src="${image.imageUrl}" alt="${image.description}">`
+          : `<div class="image-placeholder">
+               <div style="margin-bottom: 10px;">📷</div>
+               <div>暂无图片</div>
+             </div>`
+        }
+      </div>
+
+      <div class="card-description">
+        ${image.description}
+      </div>
+
+      <div class="card-prompt">
+        Prompt: ${image.prompt}
+      </div>
+
+      <div class="position-selector">
+        <label>插入位置：</label>
+        <select onchange="updateImagePosition(${index}, this.value)">
+          <option value="start" ${image.position === 'start' ? 'selected' : ''}>文章开头（封面）</option>
+          <option value="section-1" ${image.position === 'section-1' ? 'selected' : ''}>第1段后</option>
+          <option value="section-2" ${image.position === 'section-2' ? 'selected' : ''}>第2段后</option>
+          <option value="section-3" ${image.position === 'section-3' ? 'selected' : ''}>第3段后</option>
+          <option value="section-4" ${image.position === 'section-4' ? 'selected' : ''}>第4段后</option>
+          <option value="section-5" ${image.position === 'section-5' ? 'selected' : ''}>第5段后</option>
+          <option value="end" ${image.position === 'end' ? 'selected' : ''}>文章结尾</option>
+        </select>
+      </div>
+
+      <button class="primary-btn" style="width: 100%; margin-top: 12px;" onclick="generateImageWithClient(${index})">
+        ${image.imageUrl ? '重新生成图片' : '生成图片'}
+      </button>
+    </div>
+  `).join('');
+
+  // 添加拖拽事件
+  addDragAndDropHandlers();
+}
+
+// 获取位置标签
+function getPositionLabel(position) {
+  const labels = {
+    'start': '封面图',
+    'section-1': '第1段',
+    'section-2': '第2段',
+    'section-3': '第3段',
+    'section-4': '第4段',
+    'section-5': '第5段',
+    'end': '结尾图'
+  };
+  return labels[position] || position;
+}
+
+// 使用客户端生成图片
+window.generateImageWithClient = async function(index) {
+  const image = currentImagePlan.images[index];
+
+  // 复制prompt到剪贴板
+  try {
+    await navigator.clipboard.writeText(image.prompt);
+    showNotification('✅ Prompt已复制到剪贴板', 'success');
+  } catch (error) {
+    console.error('复制失败:', error);
+  }
+
+  // 根据选择的客户端打开对应网站
+  const clientUrls = {
+    'doubao': 'https://www.doubao.com/chat/',
+    'wenxin': 'https://yiyan.baidu.com/'
+  };
+
+  const url = clientUrls[selectedClient];
+  if (url) {
+    window.open(url, '_blank');
+    showNotification(`🎨 已打开${selectedClient === 'doubao' ? '豆包' : '文心一言'}，请粘贴prompt生成图片`, 'info');
+
+    // 显示如何上传图片的提示
+    setTimeout(() => {
+      showNotification('💡 生成图片后，请保存图片或复制图片链接', 'info');
+    }, 2000);
+  }
+
+  // 更新卡片状态
+  currentImagePlan.images[index].status = 'generating';
+  renderImageCards();
+}
+
+// 重新生成图片
+window.regenerateImage = function(index) {
+  if (confirm('确定要重新生成这张图片吗？')) {
+    currentImagePlan.images[index].imageUrl = null;
+    currentImagePlan.images[index].status = 'pending';
+    renderImageCards();
+    generateImageWithClient(index);
+  }
+}
+
+// 删除图片
+window.deleteImage = function(index) {
+  if (confirm('确定要删除这张图片吗？')) {
+    currentImagePlan.images.splice(index, 1);
+    currentImagePlan.totalImages = currentImagePlan.images.length;
+    renderImageCards();
+    showNotification('✅ 图片已删除', 'success');
+  }
+}
+
+// 更新图片位置
+window.updateImagePosition = function(index, newPosition) {
+  currentImagePlan.images[index].position = newPosition;
+  showNotification('✅ 位置已更新', 'success');
+}
+
+// 添加拖拽处理
+function addDragAndDropHandlers() {
+  const cards = document.querySelectorAll('.preview-image-card');
+  let draggedCard = null;
+
+  cards.forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      draggedCard = card;
+      card.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', (e) => {
+      card.classList.remove('dragging');
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (draggedCard && draggedCard !== card) {
+        const fromIndex = parseInt(draggedCard.dataset.index);
+        const toIndex = parseInt(card.dataset.index);
+
+        // 交换数组中的位置
+        const temp = currentImagePlan.images[fromIndex];
+        currentImagePlan.images[fromIndex] = currentImagePlan.images[toIndex];
+        currentImagePlan.images[toIndex] = temp;
+
+        renderImageCards();
+        showNotification('✅ 图片顺序已调整', 'success');
+      }
+    });
+  });
+}
+
+// 关闭预览
+function closeImagePreview() {
+  const modal = document.getElementById('image-preview-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+  currentImagePlan = null;
+
+  // 确保恢复页面滚动
+  document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
+}
+
+// 确认插入图片
+function confirmInsertImages() {
+  if (!currentImagePlan) return;
+
+  // 检查是否有未生成的图片
+  const pendingImages = currentImagePlan.images.filter(img => !img.imageUrl);
+  if (pendingImages.length > 0) {
+    if (!confirm(`还有 ${pendingImages.length} 张图片未生成，确定要继续吗？\n未生成的图片将使用占位符。`)) {
+      return;
+    }
+  }
+
+  // 构建带图片的文章
+  const articleWithImages = insertImagesToArticleContent(
+    currentImagePlan.articleContent,
+    currentImagePlan.images
+  );
+
+  // 插入到编辑器
+  insertToEditor(articleWithImages);
+
+  // 关闭预览
+  closeImagePreview();
+
+  showNotification(`✅ 文章已插入编辑器，包含 ${currentImagePlan.totalImages} 张配图`, 'success');
+}
+
+// 将图片插入文章内容
+function insertImagesToArticleContent(articleContent, images) {
+  let result = '';
+  const paragraphs = articleContent.split('\n\n');
+
+  // 插入封面图
+  const coverImages = images.filter(img => img.position === 'start');
+  coverImages.forEach(image => {
+    result += createImageHtml(image) + '\n\n';
+  });
+
+  // 插入段落和对应的图片
+  for (let i = 0; i < paragraphs.length; i++) {
+    result += paragraphs[i] + '\n\n';
+
+    const sectionPosition = `section-${i + 1}`;
+    const sectionImages = images.filter(img => img.position === sectionPosition);
+    sectionImages.forEach(image => {
+      result += createImageHtml(image) + '\n\n';
+    });
+  }
+
+  // 插入结尾图
+  const endImages = images.filter(img => img.position === 'end');
+  endImages.forEach(image => {
+    result += createImageHtml(image) + '\n\n';
+  });
+
+  return result;
+}
+
+// 创建图片HTML
+function createImageHtml(image) {
+  const imageUrl = image.imageUrl || 'https://via.placeholder.com/800x450?text=' + encodeURIComponent(image.description);
+
+  return `<figure style="text-align: center; margin: 20px 0;">
+  <img src="${imageUrl}" alt="${image.description}" style="max-width: 100%; border-radius: 8px;" />
+  <figcaption style="color: #999; font-size: 14px; margin-top: 10px;">${image.description}</figcaption>
+</figure>`;
+}
+
+// ========== 配图功能结束 ==========
+
+// 打开侧边栏
+function openSidebar() {
+  const sidebar = document.getElementById('ai-editor-sidebar');
+  if (sidebar) {
+    sidebar.style.display = 'flex';
+  }
+  // 确保页面可以滚动
+  document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
+}
+
+// 关闭侧边栏
+function closeSidebar() {
+  const sidebar = document.getElementById('ai-editor-sidebar');
+  if (sidebar) {
+    sidebar.style.display = 'none';
+  }
+  // 确保关闭配图预览模态框
+  closeImagePreview();
+  // 恢复页面滚动
+  document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
+}
+
 // 创建悬浮按钮
 function createFloatingButton() {
+  // 防止重复创建
+  if (document.getElementById('ai-editor-float-btn')) {
+    return;
+  }
+
   const button = document.createElement('div');
   button.id = 'ai-editor-float-btn';
   button.className = 'ai-editor-float-btn';
@@ -832,9 +1393,14 @@ function createFloatingButton() {
   button.addEventListener('click', () => {
     const sidebar = document.getElementById('ai-editor-sidebar');
     if (sidebar) {
-      sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+      if (sidebar.style.display === 'none') {
+        openSidebar();
+      } else {
+        closeSidebar();
+      }
     } else {
       createAISidebar();
+      openSidebar();
     }
   });
 
@@ -848,10 +1414,38 @@ if (isEditorPage()) {
   } else {
     init();
   }
+
+  // 监听页面可见性变化 - 确保页面重新可见时恢复滚动
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      // 确保页面滚动正常
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      console.log('Page visibility restored - scroll enabled');
+    }
+  });
+
+  // 监听页面卸载 - 清理状态
+  window.addEventListener('beforeunload', () => {
+    cleanup();
+  });
+
+  // 监听页面显示事件（从缓存恢复）
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      // 页面从缓存恢复，确保状态正确
+      cleanup();
+      console.log('Page restored from cache - cleanup executed');
+    }
+  });
 }
 
 function init() {
   console.log('Initializing WeChat AI-Editor (小白版)');
+
+  // 清理可能残留的元素和样式
+  cleanup();
+
   createFloatingButton();
   createAISidebar();
 
@@ -860,8 +1454,33 @@ function init() {
     if (request.action === 'toggleSidebar') {
       const sidebar = document.getElementById('ai-editor-sidebar');
       if (sidebar) {
-        sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+        if (sidebar.style.display === 'none') {
+          openSidebar();
+        } else {
+          closeSidebar();
+        }
       }
     }
   });
+}
+
+// 清理函数 - 清除可能残留的状态
+function cleanup() {
+  // 恢复页面滚动
+  document.body.style.overflow = '';
+  document.documentElement.style.overflow = '';
+
+  // 关闭可能残留的模态框
+  const modal = document.getElementById('image-preview-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
+
+  // 清除全局变量
+  window.currentHotspot = null;
+  window.currentHotspotSource = null;
+  window.hotspotsLoaded = false;
+
+  console.log('Cleanup completed - page scroll restored');
 }
