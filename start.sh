@@ -2,6 +2,10 @@
 
 # WeChat AI-Editor 快速启动脚本
 
+# 切换到脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "================================================"
 echo "🤖 WeChat AI-Editor 启动脚本"
 echo "================================================"
@@ -30,6 +34,7 @@ case $choice in
         echo "📦 正在构建 Chrome 插件..."
         cd chrome-extension
         node build.js
+        cd ..
         echo ""
         echo "✅ 插件构建完成！"
         echo "请在 Chrome 中加载 chrome-extension/dist 目录"
@@ -40,6 +45,7 @@ case $choice in
         echo "🚀 正在启动后端服务..."
         cd backend
         mvn spring-boot:run
+        cd ..
         ;;
 
     3)
@@ -48,6 +54,7 @@ case $choice in
         echo "🕷️  正在抓取文章..."
         cd crawler
         python src/main.py "$article_url"
+        cd ..
         ;;
 
     4)
